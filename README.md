@@ -35,7 +35,7 @@ request is crafted by hand.
 | Framework | Next.js 16 (App Router) |
 | Language | TypeScript |
 | UI | React 19, Tailwind CSS v4 |
-| AI | OpenAI API via the official SDK |
+| AI | Groq free tier (`openai/gpt-oss-120b`) via the OpenAI SDK |
 | Hosting | Vercel (any Node host works) |
 | Storage | None. No database, no accounts, no login. |
 
@@ -83,16 +83,18 @@ Environment Variables** for production.
 
 | Variable | What it is |
 |---|---|
-| `OPENAI_API_KEY` | Your OpenAI key, from <https://platform.openai.com/api-keys>. Server-side only — it is never sent to the browser. |
+| `GROQ_API_KEY` | Your Groq key, from <https://console.groq.com/keys>. Free, no credit card. Server-side only — it is never sent to the browser. |
 | `NEXT_PUBLIC_GOOGLE_REVIEW_URL` | Where the "Post on Google" button sends the customer. See below. |
 
 ### Optional
 
 | Variable | Default | What it does |
 |---|---|---|
-| `OPENAI_MODEL` | `gpt-5.4-mini` | Any chat-capable model your account can reach. |
-| `OPENAI_REASONING_EFFORT` | unset | `none`, `minimal`, `low`, `medium`, `high`. Only some models accept it; if yours rejects it the app retries without it automatically. |
-| `OPENAI_TEMPERATURE` | unset | Leave blank unless your model supports it. Review variety does not depend on it. |
+| `LLM_MODEL` | `openai/gpt-oss-120b` | Any chat-capable model the provider serves. |
+| `LLM_BASE_URL` | Groq's endpoint | Any OpenAI-compatible API. Set it to `-` to use the OpenAI SDK's own default. |
+| `LLM_API_KEY` | unset | Alternative to `GROQ_API_KEY` when you are not on Groq. |
+| `LLM_REASONING_EFFORT` | unset | `none`, `minimal`, `low`, `medium`, `high`. Only some models accept it; if yours rejects it the app retries without it automatically. |
+| `LLM_TEMPERATURE` | unset | Leave blank unless your model supports it. Review variety does not depend on it. |
 | `FEEDBACK_WEBHOOK_URL` | unset | If set, 1–3 star feedback is POSTed here as `{"text": "..."}`. A Slack or Google Chat incoming webhook works as-is. |
 
 > `NEXT_PUBLIC_` variables are visible in the browser by design. The Google
@@ -108,9 +110,11 @@ Open **`lib/business.ts`**. Everything customer-facing is in that one file:
 
 ```ts
 export const business = {
-  name: "Aqua Spring Water Supply",
-  tagline: "Packaged drinking water · cans for events & offices",
+  name: "Tankaneer",
+  tagline: "Premium Drinking Water",
   description: "Drinking water can supply for weddings, functions, ...",
+  seoKeywords: ["packaged drinking water", "water can supply", ...],
+  serviceArea: "",
   googleReviewUrl: process.env.NEXT_PUBLIC_GOOGLE_REVIEW_URL,
 };
 ```
@@ -118,6 +122,12 @@ export const business = {
 - `name` and `tagline` appear in the header and the page title.
 - `description` is fed to the AI as background. Keep it factual. Do not add
   claims you cannot stand behind, because the model may repeat them.
+- `seoKeywords` is the vocabulary the model is *allowed* to reach for when
+  describing the service. Every phrase must be literally true of the business.
+- `serviceArea` is the town or area you serve, e.g. `"Indore"`. A place name is
+  the strongest local-SEO signal a review can carry, so setting this is worth
+  doing — but only if it is accurate. Left empty, the model is forbidden from
+  naming any location at all.
 
 ### Using a real logo
 
@@ -175,7 +185,7 @@ thank-you cards, and the counter.
 
 1. Push this repository to GitHub.
 2. In Vercel, **Add New → Project**, and import the repository.
-3. Add `OPENAI_API_KEY` and `NEXT_PUBLIC_GOOGLE_REVIEW_URL` under Environment
+3. Add `GROQ_API_KEY` and `NEXT_PUBLIC_GOOGLE_REVIEW_URL` under Environment
    Variables. Add any optional ones you want.
 4. Deploy. The defaults are correct for Next.js — nothing to configure.
 
@@ -201,7 +211,8 @@ Worth walking through by hand before going live:
 | Tap **Post on Google** | Google opens in a new tab, review copied to clipboard. |
 | Tap 2 stars instead | Private feedback form. No review is generated. |
 | Unset the Google URL and redeploy | Configuration notice plus a "copy review" fallback. |
-| Break `OPENAI_API_KEY` | Friendly error and a working **Try Again** button. |
+| Tap **Or write your own review** | Blank editable box, working **Post on Google**. |
+| Break `GROQ_API_KEY` | Friendly error and a working **Try Again** button. |
 
 ---
 
@@ -218,6 +229,27 @@ cannot inject arbitrary "business facts" through it. The note is the only free
 text: it is stripped of control characters, collapsed onto one line, capped at
 300 characters, and fenced in a block explicitly marked as customer text rather
 than instructions.
+
+### Reviews are written for search, not stuffed with keywords
+
+Google reads review text to work out what a business does and who to show it
+to, so the prompt asks for the business name once, the service described in
+plain search terms, and the occasion named where the customer gave one. It is
+told explicitly that a natural sentence with one keyword beats a stuffed one,
+and that a keyword which will not fit should be left out.
+
+All of that sits *under* the grounding rules, not beside them: the model may
+only describe what the customer actually selected. Keywords widen the
+vocabulary; they never add a claim. Location is the sharp edge here, which is
+why it comes from `serviceArea` in `lib/business.ts` and is off by default.
+
+### Writing your own review
+
+Under the **Create My Review** button there is **Or write your own review**.
+It opens the same editor with an empty box: no request is made, nothing is sent
+to the model, and the customer gets the same word count, **Copy text** and
+**Post on Google** button. From there, **Write one for me instead** hands them
+back to the model if they change their mind.
 
 ### Regenerations actually differ
 

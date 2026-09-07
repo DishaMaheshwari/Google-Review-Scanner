@@ -6,6 +6,7 @@ import { track } from "@/lib/analytics";
 import {
   MAX_PREVIOUS_REVIEWS,
   POSITIVE_RATING_THRESHOLD,
+  isLikedAttribute,
   type LikedAttribute,
 } from "@/lib/attributes";
 
@@ -15,6 +16,24 @@ import { ReviewForm } from "./ReviewForm";
 import { ReviewResult } from "./ReviewResult";
 
 type Phase = "form" | "generating" | "result";
+
+/**
+ * Where the text in the editor came from. In "own" mode the customer is
+ * writing from scratch, so there is no draft history to steer away from and
+ * nothing on screen that the model produced.
+ */
+type Mode = "generated" | "own";
+
+/** Per-tab key for the in-progress draft. Cleared when the tab closes. */
+const DRAFT_KEY = "review-draft";
+
+interface SavedDraft {
+  review: string;
+  mode: Mode;
+  rating: number | null;
+  liked: LikedAttribute[];
+  note: string;
+}
 
 const GENERIC_ERROR =
   "Something went wrong while creating your review. Please try again.";
@@ -26,6 +45,7 @@ interface ReviewFlowProps {
 
 export function ReviewFlow({ googleReviewUrl }: ReviewFlowProps) {
   const [phase, setPhase] = useState<Phase>("form");
+  const [mode, setMode] = useState<Mode>("generated");
   const [rating, setRating] = useState<number | null>(null);
   const [liked, setLiked] = useState<LikedAttribute[]>([]);
   const [note, setNote] = useState("");
@@ -41,9 +61,72 @@ export function ReviewFlow({ googleReviewUrl }: ReviewFlowProps) {
   const inFlight = useRef(false);
   const hasStarted = useRef(false);
 
+  /**
+   * True once the restore attempt below has run. Until then we must not save,
+   * or the empty initial state would overwrite what we are about to restore.
+   */
+  const hasRestored = useRef(false);
+
   useEffect(() => {
     track("page_view");
   }, []);
+
+  /**
+   * Coming back from Google must not lose the customer's words.
+   *
+   * The Post button opens a new tab, but a browser is free to reuse the
+   * current one — and on the way back the app remounts with empty state. So
+   * the draft is kept in sessionStorage: it survives a round trip, and it is
+   * gone when the tab closes. Nothing is sent anywhere, and it is per-tab, so
+   * a shared phone does not hand the next customer the last one's review.
+   */
+  useEffect(() => {
+    hasRestored.current = true;
+    /*
+      set-state-in-effect is disabled deliberately here. sessionStorage cannot
+      be read during render — it does not exist on the server, and reading it
+      in a lazy initialiser would make the client's first render disagree with
+      the server's HTML. Reading it after hydration and setting state once is
+      the correct shape for syncing a browser-only store.
+    */
+    /* eslint-disable react-hooks/set-state-in-effect */
+    try {
+      const saved = sessionStorage.getItem(DRAFT_KEY);
+      if (!saved) return;
+
+      const parsed: unknown = JSON.parse(saved);
+      if (typeof parsed !== "object" || parsed === null) return;
+
+      const draft = parsed as Partial<SavedDraft>;
+      if (typeof draft.review !== "string" || !draft.review.trim()) return;
+
+      setReview(draft.review);
+      setMode(draft.mode === "own" ? "own" : "generated");
+      if (typeof draft.rating === "number") setRating(draft.rating);
+      if (typeof draft.note === "string") setNote(draft.note);
+      if (Array.isArray(draft.liked)) {
+        setLiked(draft.liked.filter(isLikedAttribute));
+      }
+      setPhase("result");
+    } catch {
+      // A malformed or unavailable store is not worth failing the page over.
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, []);
+
+  useEffect(() => {
+    if (!hasRestored.current) return;
+    try {
+      if (phase === "result" && review.trim()) {
+        const draft: SavedDraft = { review, mode, rating, liked, note };
+        sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      } else {
+        sessionStorage.removeItem(DRAFT_KEY);
+      }
+    } catch {
+      // Private-mode browsers can throw on write. The flow still works.
+    }
+  }, [liked, mode, note, phase, rating, review]);
 
   const handleRatingChange = useCallback((value: number) => {
     setRating(value);
@@ -73,11 +156,15 @@ export function ReviewFlow({ googleReviewUrl }: ReviewFlowProps) {
       if (!isRegeneration) setPhase("generating");
 
       // The draft currently on screen is the one we most need the model to
-      // move away from, so it belongs in the history we send.
-      const history = (review.trim()
-        ? [...previousReviews, review.trim()]
-        : previousReviews
-      ).slice(-MAX_PREVIOUS_REVIEWS);
+      // move away from, so it belongs in the history we send — unless the
+      // customer wrote it themselves, in which case it is not ours to avoid.
+      const history =
+        mode === "own"
+          ? []
+          : (review.trim()
+              ? [...previousReviews, review.trim()]
+              : previousReviews
+            ).slice(-MAX_PREVIOUS_REVIEWS);
 
       try {
         const response = await fetch("/api/generate-review", {
@@ -118,6 +205,7 @@ export function ReviewFlow({ googleReviewUrl }: ReviewFlowProps) {
 
         setPreviousReviews(history);
         setReview(text);
+        setMode("generated");
         setPhase("result");
         track(isRegeneration ? "review_regenerated" : "review_generated", {
           rating,
@@ -137,7 +225,7 @@ export function ReviewFlow({ googleReviewUrl }: ReviewFlowProps) {
         setIsBusy(false);
       }
     },
-    [liked, note, previousReviews, rating, review],
+    [liked, mode, note, previousReviews, rating, review],
   );
 
   const handleBack = useCallback(() => {
@@ -145,6 +233,21 @@ export function ReviewFlow({ googleReviewUrl }: ReviewFlowProps) {
     setError(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
+
+  /**
+   * Skips the model entirely: the customer gets the same editor, the same
+   * copy-to-clipboard and the same Post on Google button, starting from a
+   * blank box. Nothing is sent to the server on this path.
+   */
+  const handleWriteOwn = useCallback(() => {
+    setMode("own");
+    setReview("");
+    setPreviousReviews([]);
+    setError(null);
+    setPhase("result");
+    track("own_review_started", { rating: rating ?? 0 });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [rating]);
 
   const handlePost = useCallback(() => {
     track("google_button_clicked", { rating: rating ?? 0 });
@@ -158,12 +261,13 @@ export function ReviewFlow({ googleReviewUrl }: ReviewFlowProps) {
         <LoadingState />
       ) : phase === "result" ? (
         <ReviewResult
+          mode={mode}
           review={review}
           googleReviewUrl={googleReviewUrl}
           isRegenerating={isBusy}
           error={error}
           onReviewChange={setReview}
-          onRegenerate={() => void generate(true)}
+          onRegenerate={() => void generate(mode !== "own")}
           onBack={handleBack}
           onPost={handlePost}
         />
@@ -178,6 +282,7 @@ export function ReviewFlow({ googleReviewUrl }: ReviewFlowProps) {
           onToggleLiked={handleToggleLiked}
           onNoteChange={setNote}
           onSubmit={() => void generate(false)}
+          onWriteOwn={handleWriteOwn}
         />
       )}
     </main>

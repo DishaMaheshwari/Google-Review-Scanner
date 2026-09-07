@@ -13,6 +13,7 @@ export type AnalyticsEvent =
   | "page_view"
   | "review_started"
   | "review_generated"
+  | "own_review_started"
   | "review_regenerated"
   | "google_button_clicked"
   | "low_rating_feedback_sent";

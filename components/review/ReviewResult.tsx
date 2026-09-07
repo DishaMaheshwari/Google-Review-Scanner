@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 
 interface ReviewResultProps {
+  /** "own" means the customer is writing from scratch, not editing a draft. */
+  mode: "generated" | "own";
   review: string;
   googleReviewUrl: string | null;
   isRegenerating: boolean;
@@ -19,6 +21,7 @@ function countWords(text: string): number {
 }
 
 export function ReviewResult({
+  mode,
   review,
   googleReviewUrl,
   isRegenerating,
@@ -47,6 +50,7 @@ export function ReviewResult({
 
   const trimmed = review.trim();
   const isEmpty = trimmed.length === 0;
+  const isOwn = mode === "own";
 
   async function copyReview(): Promise<boolean> {
     try {
@@ -80,10 +84,18 @@ export function ReviewResult({
     <div className="flex flex-col gap-5">
       <div className="text-center">
         <h1 className="text-[24px] leading-tight font-semibold tracking-[-0.02em] text-ink">
-          Your review is ready <span aria-hidden="true">✨</span>
+          {isOwn ? (
+            "Write your review"
+          ) : (
+            <>
+              Your review is ready <span aria-hidden="true">✨</span>
+            </>
+          )}
         </h1>
         <p className="mt-2 text-[14px] text-ink-soft">
-          Edit anything that doesn&rsquo;t sound like you.
+          {isOwn
+            ? "In your own words — then post it on Google."
+            : "Edit anything that doesn’t sound like you."}
         </p>
       </div>
 
@@ -98,8 +110,9 @@ export function ReviewResult({
           onChange={(event) => onReviewChange(event.target.value)}
           maxLength={1500}
           rows={5}
+          placeholder={isOwn ? "Type your review here…" : undefined}
           spellCheck
-          className="w-full resize-none rounded-xl bg-transparent px-3.5 py-3 text-[16px] leading-[1.65] text-ink focus:outline-none"
+          className="w-full resize-none rounded-xl bg-transparent px-3.5 py-3 text-[16px] leading-[1.65] text-ink placeholder:text-ink-faint focus:outline-none"
         />
         <div className="flex items-center justify-between px-3.5 pt-1 pb-2">
           <span className="text-[12px] text-ink-faint">
@@ -169,8 +182,12 @@ export function ReviewResult({
         disabled={isRegenerating}
         className="min-h-13 w-full rounded-xl border border-rim-strong bg-card px-5 text-[15px] font-medium text-ink transition-colors active:bg-wash disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <span aria-hidden="true">↻ </span>
-        {isRegenerating ? "Writing another\u2026" : "Generate Another"}
+        <span aria-hidden="true">{isOwn ? "✨ " : "↻ "}</span>
+        {isRegenerating
+          ? "Writing\u2026"
+          : isOwn
+            ? "Write one for me instead"
+            : "Generate Another"}
       </button>
 
       <button
@@ -178,7 +195,7 @@ export function ReviewResult({
         onClick={onBack}
         className="mx-auto text-[13.5px] text-ink-soft underline underline-offset-2"
       >
-        Change what you picked
+        {isOwn ? "Back" : "Change what you picked"}
       </button>
 
       <p className="text-center text-[12.5px] leading-relaxed text-ink-faint">

@@ -41,7 +41,15 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="antialiased">{children}</body>
+      {/*
+        suppressHydrationWarning is scoped to this one element's attributes.
+        Browser extensions (password managers, colour pickers) commonly add
+        attributes to <body> before React hydrates, which is not a mismatch we
+        caused or can fix. Children still hydrate and warn normally.
+      */}
+      <body className="antialiased" suppressHydrationWarning>
+        {children}
+      </body>
     </html>
   );
 }

@@ -20,6 +20,8 @@ interface ReviewFormProps {
   onToggleLiked: (attribute: LikedAttribute) => void;
   onNoteChange: (note: string) => void;
   onSubmit: () => void;
+  /** Skips the model and opens a blank editor the customer fills in. */
+  onWriteOwn: () => void;
 }
 
 export function ReviewForm({
@@ -32,6 +34,7 @@ export function ReviewForm({
   onToggleLiked,
   onNoteChange,
   onSubmit,
+  onWriteOwn,
 }: ReviewFormProps) {
   const isPositive = rating !== null && rating >= POSITIVE_RATING_THRESHOLD;
   const isNegative = rating !== null && rating < POSITIVE_RATING_THRESHOLD;
@@ -102,10 +105,20 @@ export function ReviewForm({
             {error ? "Try Again" : "Create My Review"}
           </button>
 
-          <p className="-mt-2 text-center text-[12.5px] leading-relaxed text-ink-faint">
-            We&rsquo;ll suggest some wording. You can edit it, and you post it
-            yourself on Google.
-          </p>
+          <div className="-mt-2 flex flex-col items-center gap-3">
+            <p className="text-center text-[12.5px] leading-relaxed text-ink-faint">
+              We&rsquo;ll suggest some wording. You can edit it, and you post it
+              yourself on Google.
+            </p>
+
+            <button
+              type="button"
+              onClick={onWriteOwn}
+              className="text-[13.5px] font-medium text-teal underline underline-offset-2"
+            >
+              Or write your own review
+            </button>
+          </div>
         </div>
       )}
     </div>
