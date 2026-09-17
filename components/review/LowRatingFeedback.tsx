@@ -64,8 +64,7 @@ export function LowRatingFeedback({ rating }: LowRatingFeedbackProps) {
         Sorry we didn&rsquo;t get it right.
       </h2>
       <p className="mt-1.5 text-[14px] leading-relaxed text-ink-soft">
-        We&rsquo;d still like to hear what went wrong. This goes to us
-        privately, not to Google.
+        We&rsquo;d still like to hear what went wrong
       </p>
 
       <label htmlFor="feedback" className="sr-only">
