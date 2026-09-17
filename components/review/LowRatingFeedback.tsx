@@ -51,8 +51,8 @@ export function LowRatingFeedback({ rating }: LowRatingFeedbackProps) {
           Thanks for letting us know.
         </h2>
         <p className="mt-2 text-[14px] leading-relaxed text-ink-soft">
-          Your feedback goes straight to the owner. We&rsquo;ll use it to put
-          things right.
+          Your feedback is valuable to us. We&rsquo;ll use it to put things
+          right.
         </p>
       </section>
     );

@@ -96,6 +96,7 @@ Environment Variables** for production.
 | `LLM_REASONING_EFFORT` | unset | `none`, `minimal`, `low`, `medium`, `high`. Only some models accept it; if yours rejects it the app retries without it automatically. |
 | `LLM_TEMPERATURE` | unset | Leave blank unless your model supports it. Review variety does not depend on it. |
 | `FEEDBACK_WEBHOOK_URL` | unset | If set, 1–3 star feedback is POSTed here as `{"text": "..."}`. A Slack or Google Chat incoming webhook works as-is. |
+| `FEEDBACK_SHEET_URL` | unset | If set, 1–3 star feedback is also appended as a row to a Google Sheet. See "Recording feedback in a spreadsheet" below. |
 
 > `NEXT_PUBLIC_` variables are visible in the browser by design. The Google
 > review link is public, so that is fine. **Never** put a secret in one.
@@ -276,13 +277,36 @@ Redis — the route only depends on the `rateLimit()` signature.
 
 ### Where low-rating feedback goes
 
-There is no database. Feedback is written to the server log, visible under
-**Vercel → Project → Logs**, and forwarded to `FEEDBACK_WEBHOOK_URL` if you set
-one. Set the webhook if you actually want to hear about complaints; log lines
-are easy to miss.
+There is no database, and Vercel's serverless functions have no writable disk
+that survives between requests — so there is no local file, spreadsheet or
+otherwise, for the app to save to. Feedback is written to the server log,
+visible under **Vercel → Project → Logs**, and forwarded to two independent,
+optional webhooks if you set them: `FEEDBACK_WEBHOOK_URL` (a chat
+notification) and `FEEDBACK_SHEET_URL` (a spreadsheet row — see below). Set at
+least one if you actually want to hear about complaints; log lines are easy to
+miss.
 
 Only the rating and the text the customer typed are recorded. No name, phone
 number, email or IP is stored.
+
+### Recording feedback in a spreadsheet
+
+Set `FEEDBACK_SHEET_URL` and every submission is appended as a row to a Google
+Sheet — one place to read, sort, filter, or open in Excel (File → Download →
+Microsoft Excel), with no new paid service and no database.
+
+1. Open or create a Google Sheet to collect feedback in.
+2. **Extensions → Apps Script**, delete the starter code, and paste in
+   [`scripts/feedback-sheet.gs`](scripts/feedback-sheet.gs).
+3. **Deploy → New deployment** → type **Web app** → Execute as **Me** → Who
+   has access **Anyone**. Deploy and copy the URL it gives you.
+   This URL is a write-only secret: holding it lets someone add a row, but
+   grants no read access to the Sheet or your Google account.
+4. Put that URL in `FEEDBACK_SHEET_URL` in `.env.local` and in Vercel, then
+   redeploy.
+
+Editing the script later requires a new deployment (or a new version under
+**Manage deployments**) — saving the file alone does not update a live one.
 
 ### Analytics
 
