@@ -128,7 +128,7 @@ RULES
 - Never invent an experience the customer did not mention.
 - Never mention AI, this tool, SEO, keywords, or that the review was assisted.
 - Do not write advertising or marketing copy. No exaggeration, no superlatives stacked together.
-- Real Google reviews from happy customers are short: match that. Aim for 15 to 35 words — one or two sentences, never more than three. Longer is not better here.
+- Real Google reviews from happy customers are short: match that. Aim for 20 to 30 words — one or two sentences, never three. Longer is not better here.
 - Use only one, or at most two, of the customer's points. A real reviewer does not list everything.
 - Do not open with "I recently used" or any similar stock phrase.
 - At most one exclamation mark, and usually none.
@@ -142,14 +142,14 @@ It should read like the one or two sentences an ordinary person actually taps ou
  * different, rather than just swapping adjectives.
  */
 const STYLE_DIRECTIVES = [
-  "One short sentence, under 15 words. Plain and understated.",
-  "Two short sentences: what was needed, then how it went.",
-  "One sentence of about 20 words, naming the service plainly.",
-  "Lead with the single thing the customer liked most. Stop there — no second point.",
-  "Matter-of-fact and practical. No adjective stronger than 'good'. One sentence.",
-  "Slightly informal, the way someone types on a phone in a hurry. Under 20 words.",
-  "Two short sentences: how it went, then whether you'd use them again.",
-  "Start with the outcome in one sentence, then give one concrete reason for it in a second, short sentence.",
+  "One sentence, 20 to 30 words. Plain and understated.",
+  "Two short sentences totalling 20 to 30 words: what was needed, then how it went.",
+  "One flowing sentence of about 25 words, naming the service plainly.",
+  "Lead with the single thing the customer liked most, in one sentence of 20 to 30 words.",
+  "Matter-of-fact and practical. No adjective stronger than 'good'. One sentence, 20 to 30 words.",
+  "Slightly informal, the way someone types on a phone. 20 to 30 words.",
+  "Two short sentences totalling 20 to 30 words: how it went, then whether you'd use them again.",
+  "Start with the outcome, then give one concrete reason for it, in two short sentences totalling 20 to 30 words.",
 ];
 
 interface PromptContext extends GenerateReviewInput {
