@@ -6,6 +6,8 @@ interface ReviewResultProps {
   /** "own" means the customer is writing from scratch, not editing a draft. */
   mode: "generated" | "own";
   review: string;
+  /** Shown back to the customer so they pick the same rating on Google. */
+  rating: number | null;
   googleReviewUrl: string | null;
   isRegenerating: boolean;
   error: string | null;
@@ -23,6 +25,7 @@ function countWords(text: string): number {
 export function ReviewResult({
   mode,
   review,
+  rating,
   googleReviewUrl,
   isRegenerating,
   error,
@@ -52,7 +55,57 @@ export function ReviewResult({
   const isEmpty = trimmed.length === 0;
   const isOwn = mode === "own";
 
-  async function copyReview(): Promise<boolean> {
+  /**
+   * Copies synchronously, inside the click that triggered it.
+   *
+   * This matters on the Post button: that click also navigates to Google, and
+   * the new tab takes focus immediately. navigator.clipboard.writeText is a
+   * promise, so it can settle *after* focus has moved — and browsers reject a
+   * clipboard write from an unfocused document. execCommand is deprecated but
+   * runs to completion before the handler returns, which is exactly the
+   * property needed here.
+   */
+  function copyReviewSync(): boolean {
+    if (!trimmed) return false;
+
+    const scratch = document.createElement("textarea");
+    scratch.value = trimmed;
+    // Off-screen but still focusable and selectable — iOS Safari will not copy
+    // from a hidden or display:none element.
+    scratch.setAttribute("readonly", "");
+    scratch.style.position = "fixed";
+    scratch.style.top = "0";
+    scratch.style.left = "0";
+    scratch.style.opacity = "0";
+    scratch.style.pointerEvents = "none";
+    document.body.appendChild(scratch);
+
+    try {
+      const selection = document.getSelection();
+      const previous =
+        selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+
+      scratch.focus();
+      scratch.setSelectionRange(0, trimmed.length);
+      const copied = document.execCommand("copy");
+
+      // Put the customer's own selection back so the page is left as it was.
+      if (previous && selection) {
+        selection.removeAllRanges();
+        selection.addRange(previous);
+      }
+
+      return copied;
+    } catch {
+      return false;
+    } finally {
+      scratch.remove();
+    }
+  }
+
+  /** Modern path, used where nothing is competing for focus. */
+  async function copyReviewAsync(): Promise<boolean> {
+    if (!trimmed) return false;
     try {
       await navigator.clipboard.writeText(trimmed);
       return true;
@@ -62,19 +115,24 @@ export function ReviewResult({
   }
 
   /**
-   * Fires on the same click that follows the link. Copying first means the
-   * review is on the clipboard ready to paste into Google's review box.
+   * Fires on the same click that follows the link, so the copy must be done
+   * before this function returns — see copyReviewSync.
    */
   function handlePostClick() {
     onPost();
-    void copyReview().then((copied) => {
-      if (copied) setToast("Review copied — paste it on Google");
-    });
+    const copied = copyReviewSync();
+    setToast(
+      copied
+        ? "Review copied — paste it into Google's review box"
+        : "Couldn't copy automatically — come back and tap Copy text",
+    );
   }
 
   async function handleCopyOnly() {
+    // No navigation here, so the modern API is safe; fall back if it refuses.
+    const copied = (await copyReviewAsync()) || copyReviewSync();
     setToast(
-      (await copyReview())
+      copied
         ? "Review copied"
         : "Couldn't copy — select the text and copy it manually",
     );
@@ -145,7 +203,7 @@ export function ReviewResult({
             disabled
             className="min-h-14 w-full cursor-not-allowed rounded-xl bg-ink px-5 text-[16px] font-semibold text-card opacity-40"
           >
-            <span aria-hidden="true">⭐ </span>Post on Google
+            <span aria-hidden="true">⭐ </span>Copy Review and Paste on Google
           </button>
         ) : (
           <a
@@ -156,7 +214,7 @@ export function ReviewResult({
             className="grid min-h-14 w-full place-items-center rounded-xl bg-ink px-5 text-[16px] font-semibold text-card transition-opacity active:opacity-90"
           >
             <span>
-              <span aria-hidden="true">⭐ </span>Post on Google
+              <span aria-hidden="true">⭐ </span>Copy Review and Paste on Google
             </span>
           </a>
         )
@@ -198,9 +256,31 @@ export function ReviewResult({
         {isOwn ? "Back" : "Change what you picked"}
       </button>
 
-      <p className="text-center text-[12.5px] leading-relaxed text-ink-faint">
-        Google opens in a new tab. You review it there and post it yourself.
-      </p>
+      {/*
+        Google's review box cannot be filled in from a link — not the text and
+        not the stars. So the two manual steps are spelled out here rather than
+        left as a surprise on a page the customer has never seen.
+      */}
+      <div className="rounded-xl border border-rim bg-card px-4 py-3.5">
+        <p className="text-[12.5px] font-medium text-ink-soft">
+          On the Google page:
+        </p>
+        <ol className="mt-1.5 list-decimal space-y-1 pl-4 text-[12.5px] leading-relaxed text-ink-faint">
+          <li>
+            Tap{" "}
+            {rating !== null ? (
+              <span className="font-medium text-ink-soft">
+                {rating} star{rating === 1 ? "" : "s"}
+              </span>
+            ) : (
+              "your star rating"
+            )}
+            .
+          </li>
+          <li>Long-press the review box and choose Paste.</li>
+          <li>Tap Post.</li>
+        </ol>
+      </div>
 
       {/* Live region is always mounted so screen readers announce updates. */}
       <div aria-live="polite" className="sr-only">

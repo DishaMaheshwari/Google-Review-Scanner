@@ -1,89 +1,85 @@
 "use client";
 
-const STARS = [1, 2, 3, 4, 5] as const;
+/**
+ * A good/not-so-good choice, not a 5-star picker.
+ *
+ * Google's own review page asks for the star count, so asking again here was
+ * pure repetition. This step only needs to route the customer: a good
+ * experience gets the review assistant, anything else gets the private
+ * feedback form. The actual number sent to the API is a fixed stand-in for
+ * each side of that split (5 for good, 2 for not good) — the customer never
+ * sees or picks it, and it never reaches Google.
+ */
 
-const CAPTIONS: Record<number, string> = {
-  1: "Poor",
-  2: "Not great",
-  3: "Okay",
-  4: "Good",
-  5: "Excellent",
-};
+export const GOOD_EXPERIENCE_RATING = 5;
+export const NOT_GOOD_EXPERIENCE_RATING = 2;
 
 interface RatingProps {
   value: number | null;
   onChange: (value: number) => void;
 }
 
-function Star({ filled }: { filled: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={`h-8 w-8 transition-colors duration-150 ${
-        filled ? "text-gold" : "text-rim-strong"
-      }`}
-      fill={filled ? "currentColor" : "none"}
-      stroke="currentColor"
-      strokeWidth={filled ? 0 : 1.8}
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.58 1.11 6.47L12 17.45 6.19 20.5 7.3 14.03 2.6 9.45l6.5-.95L12 2.6Z" />
-    </svg>
-  );
-}
-
-/**
- * Native radios keep arrow-key navigation, screen-reader semantics and form
- * behaviour for free — no ARIA reimplementation needed.
- */
 export function Rating({ value, onChange }: RatingProps) {
+  const isGood = value !== null && value >= 4;
+  const isNotGood = value !== null && value < 4;
+
   return (
     <fieldset className="text-center">
       <legend className="mb-4 w-full text-[15px] font-medium text-ink-soft">
-        How would you rate your experience?
+        How was your experience with us?
       </legend>
 
-      <div className="flex items-center justify-center gap-1">
-        {STARS.map((star) => {
-          const filled = value !== null && star <= value;
-          return (
-            <label
-              key={star}
-              className="cursor-pointer p-0.5"
-              // Stops the mobile tap-highlight box from flashing over the star.
-              style={{ WebkitTapHighlightColor: "transparent" }}
-            >
-              <input
-                type="radio"
-                name="rating"
-                value={star}
-                checked={value === star}
-                onChange={() => onChange(star)}
-                className="peer sr-only"
-              />
-              <span
-                className={`grid h-12 w-12 place-items-center rounded-full transition-transform duration-150 peer-focus-visible:ring-2 peer-focus-visible:ring-teal peer-focus-visible:ring-offset-2 ${
-                  filled ? "scale-105" : "scale-100"
-                }`}
-              >
-                <Star filled={filled} />
-              </span>
-              <span className="sr-only">
-                {star} star{star === 1 ? "" : "s"} — {CAPTIONS[star]}
-              </span>
-            </label>
-          );
-        })}
-      </div>
+      <div className="flex items-center justify-center gap-3">
+        <label
+          className="cursor-pointer"
+          style={{ WebkitTapHighlightColor: "transparent" }}
+        >
+          <input
+            type="radio"
+            name="experience"
+            checked={isGood}
+            onChange={() => onChange(GOOD_EXPERIENCE_RATING)}
+            className="peer sr-only"
+          />
+          <span
+            className={`flex min-h-14 w-32 flex-col items-center justify-center gap-0.5 rounded-xl border transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-teal peer-focus-visible:ring-offset-2 ${
+              isGood
+                ? "border-teal bg-teal/10 text-ink"
+                : "border-rim bg-card text-ink-soft"
+            }`}
+          >
+            <span aria-hidden="true" className="text-[22px] leading-none">
+              🙂
+            </span>
+            <span className="text-[13.5px] font-medium">Good</span>
+          </span>
+        </label>
 
-      {/* Reserved height so choosing a rating does not shift the layout. */}
-      <p
-        className="mt-2 h-5 text-[13px] font-medium text-ink-soft"
-        aria-live="polite"
-      >
-        {value !== null ? CAPTIONS[value] : ""}
-      </p>
+        <label
+          className="cursor-pointer"
+          style={{ WebkitTapHighlightColor: "transparent" }}
+        >
+          <input
+            type="radio"
+            name="experience"
+            checked={isNotGood}
+            onChange={() => onChange(NOT_GOOD_EXPERIENCE_RATING)}
+            className="peer sr-only"
+          />
+          <span
+            className={`flex min-h-14 w-32 flex-col items-center justify-center gap-0.5 rounded-xl border transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-teal peer-focus-visible:ring-offset-2 ${
+              isNotGood
+                ? "border-clay bg-clay-wash text-ink"
+                : "border-rim bg-card text-ink-soft"
+            }`}
+          >
+            <span aria-hidden="true" className="text-[22px] leading-none">
+              😕
+            </span>
+            <span className="text-[13.5px] font-medium">Not great</span>
+          </span>
+        </label>
+      </div>
     </fieldset>
   );
 }

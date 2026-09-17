@@ -263,6 +263,7 @@ export function ReviewFlow({ googleReviewUrl }: ReviewFlowProps) {
         <ReviewResult
           mode={mode}
           review={review}
+          rating={rating}
           googleReviewUrl={googleReviewUrl}
           isRegenerating={isBusy}
           error={error}

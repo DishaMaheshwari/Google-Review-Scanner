@@ -114,12 +114,12 @@ SEARCH VISIBILITY
 Google reads the words in a review to work out what a business does and who to show it to. A review that names the business and describes the service in plain search terms is worth far more to the business than a vague one — and it is also more useful to the next customer reading it.
 
 So, without ever bending the truth:
-- Name the business as "${business.name}" once, and only once. Never twice, never in the first three words, never possessive-heavy ("${business.name}'s ${business.name}").
-- Describe the service in the customer's own plain language, using at most two of these phrases where they fit naturally: ${business.seoKeywords.join("; ")}.
+- Name the business as "${business.name}" once, if it fits naturally. Skip it rather than force it into a one-sentence review.
+- Describe the service in the customer's own plain language, using at most one of these phrases, only if it fits naturally: ${business.seoKeywords.join("; ")}.
 - Prefer the concrete noun over the pronoun: "the water cans arrived" beats "they arrived".
 - If the customer indicated an occasion (a wedding, a function, an office), say which — that is the phrase other people search for.
 
-These are targets, not a checklist. A sentence that reads like a person wrote it and contains one keyword beats a sentence stuffed with three. If a keyword cannot be worked in naturally, leave it out.
+These are targets, not a checklist. Real five-star Google reviews are short — most are one or two plain sentences. A short, natural review with zero keywords beats a longer one stuffed with three. Never lengthen a review just to fit more of these in.
 
 RULES
 - Write in the first person, as the customer.
@@ -128,28 +128,28 @@ RULES
 - Never invent an experience the customer did not mention.
 - Never mention AI, this tool, SEO, keywords, or that the review was assisted.
 - Do not write advertising or marketing copy. No exaggeration, no superlatives stacked together.
-- Roughly 40 to 70 words.
-- Use only one to three of the customer's points. Do not cram every attribute in.
+- Real Google reviews from happy customers are short: match that. Aim for 15 to 35 words — one or two sentences, never more than three. Longer is not better here.
+- Use only one, or at most two, of the customer's points. A real reviewer does not list everything.
 - Do not open with "I recently used" or any similar stock phrase.
 - At most one exclamation mark, and usually none.
 - No hashtags, no emoji, no quotation marks around the review, no markdown.
 - Return only the review text: no preamble, no labels, no explanation.
 
-It should read like something an ordinary person would actually type into Google on their phone — a person who happens to have said what the service was and who provided it.`;
+It should read like the one or two sentences an ordinary person actually taps out on their phone in thirty seconds — not a paragraph, not a summary of the whole experience.`;
 
 /**
  * Rotating instructions that push each regeneration somewhere structurally
  * different, rather than just swapping adjectives.
  */
 const STYLE_DIRECTIVES = [
-  "Two sentences. Plain and understated. Put the business name in the second one.",
-  "Open by naming what the water was needed for, then say how it went and who supplied it.",
-  "Write it as one flowing sentence of about 45 words, naming the service plainly.",
-  "Lead with the single thing the customer liked most. End with a brief recommendation that names the business.",
-  "Keep it matter-of-fact and practical. No adjective stronger than 'good'. Name the service in plain terms.",
-  "Slightly informal, the way someone types on a phone. Around 45 words.",
-  "Three short sentences: what was needed, how it went, whether you'd use them again.",
-  "Start with the outcome, then give one concrete reason for it, then name the supplier.",
+  "One short sentence, under 15 words. Plain and understated.",
+  "Two short sentences: what was needed, then how it went.",
+  "One sentence of about 20 words, naming the service plainly.",
+  "Lead with the single thing the customer liked most. Stop there — no second point.",
+  "Matter-of-fact and practical. No adjective stronger than 'good'. One sentence.",
+  "Slightly informal, the way someone types on a phone in a hurry. Under 20 words.",
+  "Two short sentences: how it went, then whether you'd use them again.",
+  "Start with the outcome in one sentence, then give one concrete reason for it in a second, short sentence.",
 ];
 
 interface PromptContext extends GenerateReviewInput {
